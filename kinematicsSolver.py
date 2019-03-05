@@ -97,6 +97,12 @@ class deltaSolver(object):
 		ax.set_zlabel('Z [mm]')
 		#Draw Origin
 		ax.scatter(0,0,0, marker = '+', c = 'k')
+		a1 = np.array([100,0,0])
+		a2 = np.array([0,100,0])
+		a3 = np.array([0,0,100])
+		ax.plot([0, a1[0]], [0, a1[1]], [0, a1[2]], c='r', marker = '<')
+		ax.plot([0, a2[0]], [0, a2[1]], [0, a2[2]], c='g', marker = '<')
+		ax.plot([0, a3[0]], [0, a3[1]], [0, a3[2]], c='b', marker = '<')
 
 		#Draw Base
 		base1 = np.matrix([-self.sb/2,-self.wb,0]).transpose()
@@ -105,15 +111,6 @@ class deltaSolver(object):
 		basePts = np.hstack((base1, base2, base3, base1))
 		basePts = np.array(basePts)
 		ax.plot(basePts[0,:] ,basePts[1,:], basePts[2,:],c='k')
-		
-		#Plot Endpoint
-		p = np.array([x, y, z])
-		a1 = p+np.array([100,0,0])
-		a2 = p+np.array([0,100,0])
-		a3 = p+np.array([0,0,100])
-		self.xEnd = ax.plot([p[0], a1[0]], [p[1], a1[1]], [p[2], a1[2]], c='r', marker = '<')
-		self.yEnd = ax.plot([p[0], a2[0]], [p[1], a2[1]], [p[2], a2[2]], c='g', marker = '<')
-		self.zEnd = ax.plot([p[0], a3[0]], [p[1], a3[1]], [p[2], a3[2]], c='b', marker = '<')
 
 		#Plot End Platform
 		p = np.array([[x, y, z]]).T
@@ -144,16 +141,8 @@ class deltaSolver(object):
 	def updatePlot(self, pos = (0, 0, -500)):
 		(x, y, z) = pos
 		thts = self.ik(pos)
-		# Plot Endpoint
-		p = np.array([x, y, z])
-		a1 = p+np.array([100,0,0])
-		a2 = p+np.array([0,100,0])
-		a3 = p+np.array([0,0,100])
-		self.updateThings(self.xEnd,[p[0], a1[0]], [p[1], a1[1]],[p[2], a1[2]])
-		self.updateThings(self.yEnd,[p[0], a2[0]], [p[1], a2[1]],[p[2], a2[2]])
-		self.updateThings(self.zEnd,[p[0], a3[0]], [p[1], a3[1]],[p[2], a3[2]])
 
-		#Plot End Points
+		#Plot End Platform
 		p = np.array([[x, y, z]]).T
 		BTp1 = p+np.array([[0, -self.up, 0]]).T
 		BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
@@ -200,7 +189,6 @@ class deltaSolver(object):
 			a = self.a
 			b = self.b
 			c = self.c
-			# three constraint equations
 			# eq1 = 
 			# eq2 = 
 			# eq3 = 
@@ -216,7 +204,6 @@ class deltaSolver(object):
 			a = self.a
 			b = self.b
 			c = self.c
-			# three constraint equations
 			# eq1 = 
 			# eq2 = 
 			# eq3 = 
