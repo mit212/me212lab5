@@ -40,8 +40,12 @@ def rotx(theta):
 	return np.array([[1, 0, 0], [0, np.cos(theta), -np.sin(theta)], [0, np.sin(theta),  np.cos(theta)]])
 
 class deltaSolver(object):
-	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0)):
+	def __init__(self, sb = 2*109.9852, sp = 109.9852, L = 304.8, l = 609.5144, h = 42.8475, tht0 = (0, 0, 0), swivel_limit = 20):
 		# 109.9852mm is 2 * 2.5" * cos(30)
+
+		#swivel_limit is the physical constraint of the system's current design. 
+		#different ball joints have different swivel limits
+		self.swivel_limit = 0.349066 #20 degrees in radians
 		(self.currTheta1, self.currTheta2, self.currTheta3) = tht0
 		self.vel1 = 0
 		self.vel2 = 0
@@ -86,6 +90,7 @@ class deltaSolver(object):
 		thts = self.ik(pos)
 
 		ax = self.fig.add_subplot(111, projection='3d')
+		self.ax = ax
 		ax.set_xlim3d(-400, 400)
 		ax.set_ylim3d(-400, 400)
 		ax.set_zlim3d(-900, 100)
@@ -97,12 +102,6 @@ class deltaSolver(object):
 		ax.set_zlabel('Z [mm]')
 		#Draw Origin
 		ax.scatter(0,0,0, marker = '+', c = 'k')
-		a1 = np.array([100,0,0])
-		a2 = np.array([0,100,0])
-		a3 = np.array([0,0,100])
-		ax.plot([0, a1[0]], [0, a1[1]], [0, a1[2]], c='r', marker = '<')
-		ax.plot([0, a2[0]], [0, a2[1]], [0, a2[2]], c='g', marker = '<')
-		ax.plot([0, a3[0]], [0, a3[1]], [0, a3[2]], c='b', marker = '<')
 
 		#Draw Base
 		base1 = np.matrix([-self.sb/2,-self.wb,0]).transpose()
@@ -111,6 +110,15 @@ class deltaSolver(object):
 		basePts = np.hstack((base1, base2, base3, base1))
 		basePts = np.array(basePts)
 		ax.plot(basePts[0,:] ,basePts[1,:], basePts[2,:],c='k')
+		
+		#Plot Endpoint
+		p = np.array([x, y, z])
+		a1 = p+np.array([100,0,0])
+		a2 = p+np.array([0,100,0])
+		a3 = p+np.array([0,0,100])
+		self.xEnd = ax.plot([p[0], a1[0]], [p[1], a1[1]], [p[2], a1[2]], c='r', marker = '<')
+		self.yEnd = ax.plot([p[0], a2[0]], [p[1], a2[1]], [p[2], a2[2]], c='g', marker = '<')
+		self.zEnd = ax.plot([p[0], a3[0]], [p[1], a3[1]], [p[2], a3[2]], c='b', marker = '<')
 
 		#Plot End Platform
 		p = np.array([[x, y, z]]).T
@@ -138,35 +146,46 @@ class deltaSolver(object):
 		self.fig.canvas.draw_idle()
 		plt.pause(0.0001)
 
-	def updatePlot(self, pos = (0, 0, -500)):
-		(x, y, z) = pos
-		thts = self.ik(pos)
+	def updatePlot(self, pos = (0, 0, -500), color = None):
+		if(color == None):
+			(x, y, z) = pos
+			thts = self.ik(pos)
+			# Plot Endpoint
+			p = np.array([x, y, z])
+			a1 = p+np.array([100,0,0])
+			a2 = p+np.array([0,100,0])
+			a3 = p+np.array([0,0,100])
+			self.updateThings(self.xEnd,[p[0], a1[0]], [p[1], a1[1]],[p[2], a1[2]])
+			self.updateThings(self.yEnd,[p[0], a2[0]], [p[1], a2[1]],[p[2], a2[2]])
+			self.updateThings(self.zEnd,[p[0], a3[0]], [p[1], a3[1]],[p[2], a3[2]])
 
-		#Plot End Platform
-		p = np.array([[x, y, z]]).T
-		BTp1 = p+np.array([[0, -self.up, 0]]).T
-		BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
-		BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
-		BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
-		self.updateThings(self.myPts, BTp[0,:], BTp[1,:], BTp[2,:])
+			#Plot End Points
+			p = np.array([[x, y, z]]).T
+			BTp1 = p+np.array([[0, -self.up, 0]]).T
+			BTp2 = p+np.array([[self.sp/2, self.up, 0]]).T
+			BTp3 = p+np.array([[-self.sp/2, self.up, 0]]).T
+			BTp = np.array(np.hstack((BTp1, BTp2, BTp3, BTp1)))
+			self.updateThings(self.myPts, BTp[0,:], BTp[1,:], BTp[2,:])
 
-		#Plot linkages
-		pt1B = np.array([[0,-self.wb,0]]).T
-		pt1J = pt1B+np.array([[0, -self.L*cos(-thts[0]), self.L*sin(-thts[0])]]).T
-		pt1P = BTp1
-		pt2B = np.dot(rotz(2*np.pi/3), pt1B)
-		pt2J = pt2B+np.dot(rotz(2*np.pi/3), np.array([[0, -self.L*cos(-thts[1]), self.L*sin(-thts[1])]]).T)
-		pt2P = BTp2
-		pt3B = np.dot(rotz(4*np.pi/3) , pt1B)
-		pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-thts[2])]]).T)
-		pt3P = BTp3
-		self.updateThings(self.link1, [pt1B[0][0], pt1J[0][0], pt1P[0][0]], [pt1B[1][0], pt1J[1][0], pt1P[1][0]], [pt1B[2][0], pt1J[2][0], pt1P[2][0]])
-		self.updateThings(self.link2, [pt2B[0][0], pt2J[0][0], pt2P[0][0]], [pt2B[1][0], pt2J[1][0], pt2P[1][0]], [pt2B[2][0], pt2J[2][0], pt2P[2][0]])
-		self.updateThings(self.link3, [pt3B[0][0], pt3J[0][0], pt3P[0][0]], [pt3B[1][0], pt3J[1][0], pt3P[1][0]], [pt3B[2][0], pt3J[2][0], pt3P[2][0]])
+			#Plot linkages
+			pt1B = np.array([[0,-self.wb,0]]).T
+			pt1J = pt1B+np.array([[0, -self.L*cos(-thts[0]), self.L*sin(-thts[0])]]).T
+			pt1P = BTp1
+			pt2B = np.dot(rotz(2*np.pi/3), pt1B)
+			pt2J = pt2B+np.dot(rotz(2*np.pi/3), np.array([[0, -self.L*cos(-thts[1]), self.L*sin(-thts[1])]]).T)
+			pt2P = BTp2
+			pt3B = np.dot(rotz(4*np.pi/3) , pt1B)
+			pt3J = pt3B+np.dot(rotz(4*np.pi/3), np.array([[0, -self.L*cos(-thts[2]), self.L*sin(-thts[2])]]).T)
+			pt3P = BTp3
+			self.updateThings(self.link1, [pt1B[0][0], pt1J[0][0], pt1P[0][0]], [pt1B[1][0], pt1J[1][0], pt1P[1][0]], [pt1B[2][0], pt1J[2][0], pt1P[2][0]])
+			self.updateThings(self.link2, [pt2B[0][0], pt2J[0][0], pt2P[0][0]], [pt2B[1][0], pt2J[1][0], pt2P[1][0]], [pt2B[2][0], pt2J[2][0], pt2P[2][0]])
+			self.updateThings(self.link3, [pt3B[0][0], pt3J[0][0], pt3P[0][0]], [pt3B[1][0], pt3J[1][0], pt3P[1][0]], [pt3B[2][0], pt3J[2][0], pt3P[2][0]])
 
-		#Update the Figure
-		self.fig.canvas.draw_idle()
-		plt.pause(0.1)
+			#Update the Figure
+			self.fig.canvas.draw_idle()
+			plt.pause(0.1)
+		else:
+			self.ax.scatter(xs = pos[0], ys = pos[1],zs = pos[2], c = color)
 	
 	def update_lines(self, num, dataLines, lines) :
 		for line, data in zip(lines, dataLines) :
@@ -215,6 +234,45 @@ class deltaSolver(object):
 
 	def fk(self,thts):
 		return self.FK(thts)
+
+	def check_constraints(self, motorID, endpos, theta1):
+		#endpos is a tuple
+
+		#assign lengths
+		length_to_motor = self.wb
+		length_to_attach = self.up
+
+		#create an array of the end position
+		xe = np.array([endpos[0], endpos[1], endpos[2]])
+
+		#all rotation matrices along the z axis
+		if(motorID == 1):
+			#rotation matrix is the identity
+			rotation_matrix = np.array([[1, 0, 0],[0, 1, 0 ],[0, 0, 1]])
+		if(motorID == 2):
+			#rotation_matrix is rotation 120 degrees
+			rotation_matrix = np.array([[np.cos(2*pi/3), -np.sin(2*pi/3), 0],[np.sin(2*pi/3), np.cos(2*pi/3), 0 ],[0, 0, 1]])
+		if(motorID == 3):
+			#rotation matrix is rotation -120 degrees
+			rotation_matrix = np.array([[np.cos(-2*pi/3), -np.sin(-2*pi/3), 0],[np.sin(-2*pi/3), np.cos(-2*pi/3), 0 ],[0, 0, 1]])
+
+		#rotate the end effector position so that the math is easy
+		xe = np.dot(rotation_matrix,xe)
+
+		#Find the end position of the attachment
+		bvec = xe - np.array([0, length_to_attach, 0])
+		x0 = np.array([length_to_motor, 0, 0])
+		#Solve two equations to solve for theta3
+		theta2 = np.arcsin((bvec[2] - x0[2] + self.L*np.cos(theta1))/(-self.l))
+		theta3 = np.arcsin((bvec[0] - x0[0])/(self.l*np.cos(theta2)))
+
+		#theta3 corresponds to the angle of the ball joint
+		if(theta3 > self.swivel_limit):
+			return False
+
+		return True
+
+
 
 def testPlot():
 	kin = deltaSolver()

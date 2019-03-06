@@ -30,10 +30,10 @@ if __name__ == "__main__":
         mainRunning = False
     while mainRunning:
         tStart = time.time()
-        zD0 = deltaKin.z
-        maxHeight = 300
         while isRunning:
             t = time.time() - tStart
+            zD0 = deltaKin.z
+            maxHeight = 300
             if t > 20:
                 isRunning = False
             elif t<10:
@@ -53,7 +53,6 @@ if __name__ == "__main__":
                 #   Define Trajectory
                 r = 100 - ((t-10)/10)*100 #mm
                 freq = 0.5#Hz
-
                 # xD = 
                 # yD = 
                 # zD = 
