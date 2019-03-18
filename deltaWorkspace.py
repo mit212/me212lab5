@@ -30,12 +30,13 @@ if __name__ == "__main__":
             t = time.time() - tStart
             #-400, 400 is the limits of xy plane on the plotter which you can see on kinematicsSolver.py
             #-900, 100 is the limits of the z axis on the plotter which you can see on kinematicsSolver.py
-            xvec = np.linspace(-400, 400, 10)
-            yvec = np.linspace(-400, 400, 10)
-            zvec = np.linspace(-900, 100, 10)
-            for i in range(10):
-                for j in range(10):
-                    for k in range(10):
+            density = 15
+            xvec = np.linspace(-400, 400, density)
+            yvec = np.linspace(-400, 400, density)
+            zvec = np.linspace(-900, 100, density)
+            for i in range(density):
+                for j in range(density):
+                    for k in range(density):
                         # create grid
                         xD = xvec[i]
                         yD = yvec[j]
